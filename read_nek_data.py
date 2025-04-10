@@ -92,8 +92,8 @@ def pipeline(data: vtk.vtkUnstructuredGrid,
 
     lut = get_lut('bwr')
 
-    data.GetPointData().SetActiveScalars('Velocity')
-    scalar = data.GetPointData().GetScalars('Velocity')
+    data.GetPointData().SetActiveScalars(scalar)
+    scalar = data.GetPointData().GetScalars(scalar)
 
     mapper = vtk.vtkDataSetMapper()
     mapper.SetInputData(data)
@@ -215,8 +215,9 @@ def main():
                         help="Scalar to be visualised")
 
     parser.add_argument('--screenshot',
-                        action='store_true',
+                        action='store',
                         default=False,
+                        type=str,
                         help="Create PNG on data")
 
     args = parser.parse_args()
@@ -235,10 +236,10 @@ def main():
     if args.screenshot or args.interactive:
         prm = create_render_manager(controller)
 
-        pipeline(data, args.scalars, prm)
+        pipeline(data, args.scalar_viz, prm)
 
     if args.screenshot:
-        screenshot("image.png" ,prm)
+        screenshot(args.screenshot ,prm)
 
     if args.interactive:
         view_data(prm)
