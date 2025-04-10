@@ -1,0 +1,95 @@
+Bootstrap: library
+From: ubuntu:22.04
+Stage: build
+
+%files
+    # add install scripts to container
+    vtk_options.cmake /opt/
+    build_wheel.sh /opt/
+    mpitest.c /opt
+
+
+%environment
+    # Point to MPICH binaries, libraries man pages
+    export MPICH_DIR=/opt/mpich
+    export PATH="$MPICH_DIR/bin:$PATH"
+    export LD_LIBRARY_PATH="$MPICH_DIR/lib:$LD_LIBRARY_PATH"
+    export MANPATH=$MPICH_DIR/share/man:$MANPATH
+
+    # Ensure VTK Python has access to VTK shared object libraries
+    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/VTK/VTK/build/build/lib.linux-x86_64-cpython-310/vtkmodules
+
+%post
+    # install pre-requisites
+    ## install pre-requisites
+    echo "Installing required packages..."
+
+    apt-get update
+    apt install -y build-essential python3-dev python3-pip \
+                  wget cmake mesa-utils freeglut3-dev curl \
+                  libxrender1 git  gfortran
+
+
+    echo "Installing MPICH..."
+
+    export DEBIAN_FRONTEND=noninteractive
+    # Information about the version of MPICH to use
+    export MPICH_VERSION=4.1.1
+    export MPICH_URL="http://www.mpich.org/static/downloads/$MPICH_VERSION/mpich-$MPICH_VERSION.tar.gz"
+    export MPICH_DIR=/opt/mpich
+
+    echo "Installing MPICH..."
+    mkdir -p /tmp/mpich
+    mkdir -p /opt
+    # Download
+    cd /tmp/mpich && wget -O mpich-$MPICH_VERSION.tar.gz $MPICH_URL && tar xzf mpich-$MPICH_VERSION.tar.gz
+    # Compile and install
+    cd /tmp/mpich/mpich-$MPICH_VERSION && ./configure --prefix=$MPICH_DIR && make -j$(nproc) install
+
+    # Set env variables so we can compile our application
+    export PATH=$MPICH_DIR/bin:$PATH
+    export LD_LIBRARY_PATH=$MPICH_DIR/lib:$LD_LIBRARY_PATH
+
+    echo "Compiling the MPI application..."
+    cd /opt && mpicc -o mpitest mpitest.c
+
+    # install VTK from source
+    echo "Installing VTK..."
+
+    ## set environemnt variables for VTK build
+    export CMAKE_CONFIGURATION=openmp_python_mpi
+    export PYTHON_PREFIX=/usr
+
+    # install Ninja for CMake generator
+    python3 -m pip install ninja
+
+    # install VTK
+    mkdir /opt/VTK/
+    cd /opt/VTK
+
+    cp ../vtk_options.cmake .
+    cp ../build_wheel.sh .
+
+    ln -s /usr/bin/python3 /usr/bin/python
+
+    ./build_wheel.sh
+
+    python3 -m pip install mpi4py
+
+%runscript
+    # Run python with command line arguments passed
+    # use `singularity run pyvista_parallel.sif <filename.py>`
+    echo "Container running: /usr/bin/python $@"
+    /usr/bin/python $@
+
+%test
+    # Ensure mpi test application can be run
+    cd /opt && ./mpitest
+
+    # Ensure vtk can be imported
+    python -c "import vtk; from mpi4py import MPI"
+    if [ $? -eq 0 ]; then
+        echo "Test success"
+    else
+        echo "Test failed"
+    fi
