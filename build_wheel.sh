@@ -39,7 +39,11 @@ git clone https://gitlab.kitware.com/mattfalcone1997/vtk.git VTK
 #============================================================
 # create build directory
 cd VTK
-git checkout feef9ccd0a1ad893308532afe85c9d08d17aa99d
+
+# This one has fixed the integer overflow bug
+git checkout nek_reader_bug
+# This one has the integer overflow bug
+#git checkout feef9ccd0a1ad893308532afe85c9d08d17aa99d
 
 git submodule update --init --recursive
 

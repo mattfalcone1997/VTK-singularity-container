@@ -17,9 +17,9 @@ singularity remote add sylabs https://cloud.sylabs.io
 ```
 
 ## Running the container
-1. Pull the container from Sylabs.
+1. Pull the container from Sylabs. The tag `old` indicates the version of the container which has the integer overflow bug in the `vtkNek5000Reader`. A new one with the bug fixed can be accessed with the `fix` tag.
 ```bash
-singularity pull library://mattfalcone1997/vtk/vtk_mpich.sif
+singularity pull library://mattfalcone1997/vtk/vtk_mpich.sif:old
 ```
 2. Test the container
 ```bash
